@@ -1,0 +1,17 @@
+{
+  "name": "wp3d-scroll",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "gsap": "^3.12.7",
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
