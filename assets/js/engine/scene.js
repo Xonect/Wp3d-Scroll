@@ -7,14 +7,21 @@ import { initCameraPath } from "../widgets/cameraPath";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const settings = () => window.wp3dScrollSettings || {};
+
 const prefersReducedMotion = () =>
 	window.matchMedia &&
 	window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const isLowPowerDevice = () => {
+	const s = settings();
 	const hc = navigator.hardwareConcurrency || 0;
 	const dm = navigator.deviceMemory || 0;
-	return (hc && hc < 4) || (dm && dm < 4);
+	const minHc = Number(s.minHardwareConcurrency || 0);
+	const minDm = Number(s.minDeviceMemory || 0);
+	const hcLow = minHc > 0 && hc > 0 && hc < minHc;
+	const dmLow = minDm > 0 && dm > 0 && dm < minDm;
+	return hcLow || dmLow;
 };
 
 const hasWebGL2 = () => {
@@ -50,14 +57,18 @@ const sizeCanvas = (el, renderer, camera) => {
 };
 
 const createBaseScene = (el, canvas) => {
+	const s = settings();
+	const tier = String(s.performanceTier || "medium");
+	const maxPixelRatio = Math.max(1, Math.min(3, Number(s.maxPixelRatio || 2)));
+
 	const bg = el.getAttribute("data-wp3d-bg-color") || "#000000";
 	const renderer = new THREE.WebGLRenderer({
 		canvas,
-		antialias: true,
+		antialias: tier !== "low",
 		alpha: false,
-		powerPreference: "high-performance",
+		powerPreference: tier === "low" ? "default" : "high-performance",
 	});
-	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPixelRatio));
 	renderer.setClearColor(new THREE.Color(bg), 1);
 
 	const scene = new THREE.Scene();
@@ -84,10 +95,16 @@ const initScene = async (el) => {
 	const canvas = el.querySelector("canvas.wp3d-scroll-canvas");
 	if (!canvas) return;
 
-	const disableMobile = el.getAttribute("data-wp3d-disable-mobile") === "1";
+	const s = settings();
+	const disableMobile =
+		el.getAttribute("data-wp3d-disable-mobile") === "1" ||
+		Number(s.disableMobileDefault || 0) === 1;
 	const isMobile = window.matchMedia && window.matchMedia("(max-width: 767px)").matches;
+	const reducedMotion = prefersReducedMotion();
+	const reducedMotionMode = String(s.reducedMotionMode || "disable");
+	const staticFrame = reducedMotion && reducedMotionMode === "static_frame";
 
-	if (prefersReducedMotion()) {
+	if (reducedMotion && !staticFrame) {
 		applyFallback(el);
 		return;
 	}
@@ -103,16 +120,18 @@ const initScene = async (el) => {
 	let cleanup = () => {};
 
 	if (widget === "model-viewer") {
-		cleanup = await initModelViewer({ el, scene, camera, renderer, cube });
+		cleanup = await initModelViewer({ el, scene, camera, renderer, cube, enableScroll: !staticFrame });
 	} else if (widget === "camera-path") {
-		cleanup = await initCameraPath({ el, scene, camera, renderer, cube });
+		cleanup = await initCameraPath({ el, scene, camera, renderer, cube, enableScroll: !staticFrame });
 	} else {
-		applyScrollBridge({
-			el,
-			onProgress: (p) => {
-				cube.rotation.y = p * Math.PI * 2;
-			},
-		});
+		if (!staticFrame) {
+			applyScrollBridge({
+				el,
+				onProgress: (p) => {
+					cube.rotation.y = p * Math.PI * 2;
+				},
+			});
+		}
 	}
 
 	const render = () => {
@@ -123,8 +142,13 @@ const initScene = async (el) => {
 	const onResize = () => render();
 	window.addEventListener("resize", onResize, { passive: true });
 
-	const ticker = () => render();
-	gsap.ticker.add(ticker);
+	let ticker = null;
+	if (!staticFrame) {
+		ticker = () => render();
+		gsap.ticker.add(ticker);
+	} else {
+		render();
+	}
 
 	el.dispatchEvent(
 		new CustomEvent("wp3d:init", {
@@ -136,7 +160,7 @@ const initScene = async (el) => {
 	return () => {
 		try {
 			window.removeEventListener("resize", onResize);
-			gsap.ticker.remove(ticker);
+			ticker && gsap.ticker.remove(ticker);
 			cleanup && cleanup();
 			renderer.dispose();
 		} catch {
@@ -167,4 +191,3 @@ export const initScenes = () => {
 		observer.observe(el);
 	}
 };
-

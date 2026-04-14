@@ -9,7 +9,7 @@ const loadGltf = async (url) => {
 	});
 };
 
-export const initModelViewer = async ({ el, scene, cube }) => {
+export const initModelViewer = async ({ el, scene, cube, enableScroll = true }) => {
 	const url = el.getAttribute("data-wp3d-model-url") || "";
 	let model = null;
 
@@ -39,9 +39,7 @@ export const initModelViewer = async ({ el, scene, cube }) => {
 	const preset = el.getAttribute("data-wp3d-preset") || "rotate";
 	const axis = el.getAttribute("data-wp3d-rotation-axis") || "y";
 
-	const kill = applyScrollBridge({
-		el,
-		onProgress: (p) => {
+	const applyAt = (p) => {
 			if (preset === "rotate") {
 				if (axis === "x") target.rotation.x = p * Math.PI * 2;
 				else if (axis === "z") target.rotation.z = p * Math.PI * 2;
@@ -63,11 +61,20 @@ export const initModelViewer = async ({ el, scene, cube }) => {
 			if (preset === "float") {
 				target.position.y = Math.sin(p * Math.PI * 2) * 0.6;
 			}
-		},
+	};
+
+	applyAt(0);
+
+	if (!enableScroll) {
+		return () => {};
+	}
+
+	const kill = applyScrollBridge({
+		el,
+		onProgress: (p) => applyAt(p),
 	});
 
 	return () => {
 		kill && kill();
 	};
 };
-

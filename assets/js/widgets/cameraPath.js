@@ -17,7 +17,7 @@ const parsePoints = (raw) => {
 	}
 };
 
-export const initCameraPath = async ({ el, camera }) => {
+export const initCameraPath = async ({ el, camera, enableScroll = true }) => {
 	const fovAttr = el.getAttribute("data-wp3d-camera-fov");
 	if (fovAttr) {
 		const fov = parseInt(fovAttr, 10);
@@ -37,19 +37,26 @@ export const initCameraPath = async ({ el, camera }) => {
 	const pin = el.getAttribute("data-wp3d-pin") === "1";
 	const pinSpacing = el.getAttribute("data-wp3d-pin-spacing") === "1";
 
+	const applyAt = (p) => {
+		const pos = curve.getPointAt(p);
+		camera.position.copy(pos);
+		camera.lookAt(0, 0, 0);
+	};
+
+	applyAt(0);
+
+	if (!enableScroll) {
+		return () => {};
+	}
+
 	const kill = applyScrollBridge({
 		el,
 		pin,
 		pinSpacing,
-		onProgress: (p) => {
-			const pos = curve.getPointAt(p);
-			camera.position.copy(pos);
-			camera.lookAt(0, 0, 0);
-		},
+		onProgress: (p) => applyAt(p),
 	});
 
 	return () => {
 		kill && kill();
 	};
 };
-

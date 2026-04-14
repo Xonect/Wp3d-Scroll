@@ -24,8 +24,15 @@ final class Plugin {
 		require_once WP3D_SCROLL_PATH . 'includes/Widgets/Model_Viewer.php';
 		require_once WP3D_SCROLL_PATH . 'includes/Widgets/Scroll_Camera_Path.php';
 		require_once WP3D_SCROLL_PATH . 'includes/Widgets/Scroll_Progress_Bar.php';
+		require_once WP3D_SCROLL_PATH . 'includes/Admin/Settings.php';
 
 		Loader::instance();
+
+		if ( is_admin() ) {
+			require_once WP3D_SCROLL_PATH . 'includes/Admin/Settings_Page.php';
+			require_once WP3D_SCROLL_PATH . 'includes/Admin/Admin.php';
+			\Wp3D_Scroll\Admin\Admin::instance();
+		}
 
 		add_action( 'elementor/widgets/register', [ $this, 'register_widgets' ] );
 	}

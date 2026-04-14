@@ -4,6 +4,11 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
 export const applyScrollBridge = ({ el, onProgress, start, end, pin, pinSpacing }) => {
+	const debug = new URLSearchParams(window.location.search).get("wp3d_debug") === "1";
+	const markers =
+		debug ||
+		Number(window.wp3dScrollSettings?.debugMarkers ?? 0) === 1;
+
 	const st = ScrollTrigger.create({
 		trigger: el,
 		start: start || el.getAttribute("data-wp3d-start") || "top bottom",
@@ -11,6 +16,7 @@ export const applyScrollBridge = ({ el, onProgress, start, end, pin, pinSpacing 
 		scrub: true,
 		pin: !!pin,
 		pinSpacing: pinSpacing !== undefined ? !!pinSpacing : true,
+		markers,
 		onUpdate: (self) => {
 			const p = self.progress || 0;
 			onProgress && onProgress(p, self.direction || 1);
@@ -27,15 +33,7 @@ export const applyScrollBridge = ({ el, onProgress, start, end, pin, pinSpacing 
 		},
 	});
 
-	const debug = new URLSearchParams(window.location.search).get("wp3d_debug");
-	const wpDebug = !!window.WP_DEBUG;
-	if (debug === "1" || wpDebug) {
-		st.vars.markers = true;
-		st.refresh();
-	}
-
 	return () => {
 		st && st.kill(true);
 	};
 };
-

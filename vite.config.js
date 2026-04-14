@@ -5,10 +5,17 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		rollupOptions: {
-			input: "assets/js/index.js",
+			input: {
+				bootstrap: "assets/js/bootstrap.js",
+				main: "assets/js/index.js",
+			},
 			output: {
-				entryFileNames: "wp3d-scroll.js",
-				chunkFileNames: "wp3d-scroll-[hash].js",
+				entryFileNames: (chunkInfo) => {
+					if (chunkInfo.name === "bootstrap") return "wp3d-scroll-bootstrap.js";
+					if (chunkInfo.name === "main") return "wp3d-scroll.js";
+					return "wp3d-scroll-[name].js";
+				},
+				chunkFileNames: "wp3d-scroll-[name]-[hash].js",
 				assetFileNames: (assetInfo) => {
 					if (assetInfo.name && assetInfo.name.endsWith(".css")) {
 						return "wp3d-scroll.css";
@@ -19,4 +26,3 @@ export default defineConfig({
 		},
 	},
 });
-

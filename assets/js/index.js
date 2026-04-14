@@ -1,4 +1,3 @@
-import "../css/styles.css";
 import { initScenes } from "./engine/scene";
 import { initProgressBars } from "./widgets/progressBar";
 

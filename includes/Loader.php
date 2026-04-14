@@ -2,6 +2,8 @@
 
 namespace Wp3D_Scroll;
 
+use Wp3D_Scroll\Admin\Settings;
+
 final class Loader {
 	private static ?Loader $instance = null;
 
@@ -22,29 +24,50 @@ final class Loader {
 			return;
 		}
 
+		$options = Settings::get_options();
+		if ( empty( $options['enabled'] ) ) {
+			return;
+		}
+
 		$dist_dir = WP3D_SCROLL_PATH . 'dist/';
 		$dist_url = WP3D_SCROLL_URL . 'dist/';
 
-		$js_path  = $dist_dir . 'wp3d-scroll.js';
+		$bootstrap_js_path = $dist_dir . 'wp3d-scroll-bootstrap.js';
+		$main_js_path      = $dist_dir . 'wp3d-scroll.js';
 		$css_path = $dist_dir . 'wp3d-scroll.css';
+
+		$version_mode = isset( $options['version_mode'] ) ? (string) $options['version_mode'] : 'plugin';
+		$ver = WP3D_SCROLL_VERSION;
+		if ( $version_mode === 'filemtime' && file_exists( $bootstrap_js_path ) ) {
+			$ver = (string) filemtime( $bootstrap_js_path );
+		}
 
 		if ( file_exists( $css_path ) ) {
 			wp_enqueue_style(
 				'wp3d-scroll',
 				$dist_url . 'wp3d-scroll.css',
 				[],
-				WP3D_SCROLL_VERSION
+				$ver
 			);
 		}
 
-		if ( file_exists( $js_path ) ) {
-			wp_enqueue_script(
-				'wp3d-scroll',
-				$dist_url . 'wp3d-scroll.js',
+		if ( file_exists( $bootstrap_js_path ) ) {
+			wp_register_script(
+				'wp3d-scroll-bootstrap',
+				$dist_url . 'wp3d-scroll-bootstrap.js',
 				[],
-				WP3D_SCROLL_VERSION,
+				$ver,
 				true
 			);
+
+			wp_script_add_data( 'wp3d-scroll-bootstrap', 'type', 'module' );
+
+			$settings = Settings::frontend_settings();
+			$settings['mainUrl'] = file_exists( $main_js_path ) ? add_query_arg( 'ver', $ver, $dist_url . 'wp3d-scroll.js' ) : '';
+
+			wp_localize_script( 'wp3d-scroll-bootstrap', 'wp3dScrollSettings', $settings );
+
+			wp_enqueue_script( 'wp3d-scroll-bootstrap' );
 		}
 	}
 }
